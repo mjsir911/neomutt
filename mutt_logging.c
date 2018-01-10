@@ -254,7 +254,7 @@ int mutt_log_start(void)
   FREE(&name);
 
   /* This will trigger the file creation */
-  if (log_file_set_level(DebugLevel, true) < 1)
+  if (log_file_set_level(DebugLevel, true) < 0)
     return -1;
 
   return 0;
@@ -310,7 +310,7 @@ int mutt_log_set_file(const char *file, bool verbose)
 
   log_file_set_filename(name, verbose);
   FREE(&name);
-  mutt_str_replace(&DebugFile, file);
+  cs_str_string_set (Config, "debug_file", file, NULL);
 
   return 0;
 }
