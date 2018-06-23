@@ -1,0 +1,4 @@
+# vim: set ft=muttrc:
+
+set realname="Testing Framework"
+set from="test@example.org"
