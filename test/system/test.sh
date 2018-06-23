@@ -55,4 +55,4 @@ system_test() {
 	HOME=$PWD EDITOR="vi -u NONE" MAILCAP="" screen ../../neomutt -m mbox -F test.rc
 }
 
-GNUPGHOME=$PWD/.gnupg system_test test_send_pgp_message
+system_test test_send_basic_message
