@@ -24,9 +24,11 @@ function assert() {
 
 function test_send_basic_message() {
 	contents=asldhadflkhsf
+	recipient=to@example.org
+	subject="This is a subject"
 	send_keystrokes <<-EOF
-	mto@example.org
-	Subject
+	m$recipient
+	$subject
 	i$contents^[
 	:wq^M
 	EOF
@@ -39,6 +41,8 @@ function test_send_basic_message() {
 	#header_found "Date" <<< "${msg}"
 	assert header_found "Date"                                        <<< "Date header not found"
 	assert header_found "From" "Testing Framework <test@example.org>" <<< "From header not found"
+	assert header_found "To" "$recipient"                             <<< "From header not found"
+	assert header_found "Subject" "$subject"                          <<< "From header not found"
 	assert header_found "Message-ID"                                  <<< "Message-ID not found"
 	assert header_found "MIME-Version"                                <<< "Message-ID not found"
 	assert header_found "Content-Type"                                <<< "Message-ID not found"
