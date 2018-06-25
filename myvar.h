@@ -24,7 +24,7 @@
 #include <stddef.h>
 
 const char *myvar_get(const char *var);
-int var_to_string(int idx, char *val, size_t len);
+int var_to_string(struct Option option, char *val, size_t len);
 int mutt_option_index(const char *s);
 
 #endif /* _MUTT_MYVAR_H */

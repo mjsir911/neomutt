@@ -3676,16 +3676,12 @@ int mutt_extract_token(struct Buffer *dest, struct Buffer *tok, int flags)
       if (var)
       {
         int idx;
-        if ((env = myvar_get(var)))
-        {
-          mutt_buffer_addstr(dest, env);
-        }
-        else if ((idx = mutt_option_index(var)) != -1)
-        {
+				struct Option option;
+				if (mutt_option_get(var, &option))
+				{
           /* expand settable neomutt variables */
           char val[LONG_STRING];
-
-          if (var_to_string(idx, val, sizeof(val)))
+          if (var_to_string(option, val, sizeof(val)))
             mutt_buffer_addstr(dest, val);
         }
         else if (!(flags & MUTT_TOKEN_NOSHELL) && (env = mutt_str_getenv(var)))
@@ -4268,10 +4264,7 @@ int mutt_option_set(const struct Option *val, struct Buffer *err)
 int mutt_option_to_string(const struct Option *opt, char *val, size_t len)
 {
   mutt_debug(2, " * mutt_option_to_string(%s)\n", NONULL((char *) opt->var));
-  int idx = mutt_option_index((const char *) opt->name);
-  if (idx != -1)
-    return var_to_string(idx, val, len);
-  return 0;
+	return var_to_string(*opt, val, len);
 }
 #endif
 
@@ -4438,64 +4431,64 @@ bool set_default_value(const char *name, intptr_t value)
 
 /**
  * var_to_string - Get a config item's value as a string
- * @param idx Index of config item in MuttVars
+ * @param option Configuration option
  * @param val Buffer for the result
  * @param len Length of the buffer
  * @retval 1 Success
  * @retval 0 Error
  */
-int var_to_string(int idx, char *val, size_t len)
+int var_to_string(struct Option option, char *val, size_t len)
 {
   char tmp[LONG_STRING];
   static const char *const vals[] = { "no", "yes", "ask-no", "ask-yes" };
 
   tmp[0] = '\0';
 
-  if ((DTYPE(MuttVars[idx].type) == DT_STRING) || (DTYPE(MuttVars[idx].type) == DT_PATH))
+  if ((DTYPE(option.type) == DT_STRING) || (DTYPE(option.type) == DT_PATH))
   {
-    mutt_str_strfcpy(tmp, NONULL(*((char **) MuttVars[idx].var)), sizeof(tmp));
-    if (DTYPE(MuttVars[idx].type) == DT_PATH)
+    mutt_str_strfcpy(tmp, NONULL(*((char **) option.var)), sizeof(tmp));
+    if (DTYPE(option.type) == DT_PATH)
       mutt_pretty_mailbox(tmp, sizeof(tmp));
   }
-  else if (DTYPE(MuttVars[idx].type) == DT_REGEX)
+  else if (DTYPE(option.type) == DT_REGEX)
   {
-    struct Regex *r = *(struct Regex **) MuttVars[idx].var;
+    struct Regex *r = *(struct Regex **) option.var;
     if (r)
       mutt_str_strfcpy(tmp, NONULL(r->pattern), sizeof(tmp));
   }
-  else if (DTYPE(MuttVars[idx].type) == DT_MBTABLE)
+  else if (DTYPE(option.type) == DT_MBTABLE)
   {
-    struct MbTable *mbt = (*((struct MbTable **) MuttVars[idx].var));
+    struct MbTable *mbt = (*((struct MbTable **) option.var));
     mutt_str_strfcpy(tmp, mbt ? NONULL(mbt->orig_str) : "", sizeof(tmp));
   }
-  else if (DTYPE(MuttVars[idx].type) == DT_ADDRESS)
+  else if (DTYPE(option.type) == DT_ADDRESS)
   {
-    mutt_addr_write(tmp, sizeof(tmp), *((struct Address **) MuttVars[idx].var), false);
+    mutt_addr_write(tmp, sizeof(tmp), *((struct Address **) option.var), false);
   }
-  else if (DTYPE(MuttVars[idx].type) == DT_QUAD)
-    mutt_str_strfcpy(tmp, vals[*(unsigned char *) MuttVars[idx].var], sizeof(tmp));
-  else if (DTYPE(MuttVars[idx].type) == DT_NUMBER)
+  else if (DTYPE(option.type) == DT_QUAD)
+    mutt_str_strfcpy(tmp, vals[*(unsigned char *) option.var], sizeof(tmp));
+  else if (DTYPE(option.type) == DT_NUMBER)
   {
-    short sval = *((short *) MuttVars[idx].var);
+    short sval = *((short *) option.var);
 
     /* avert your eyes, gentle reader */
-    if (mutt_str_strcmp(MuttVars[idx].name, "wrapmargin") == 0)
+    if (mutt_str_strcmp(option.name, "wrapmargin") == 0)
       sval = sval > 0 ? 0 : -sval;
 
     snprintf(tmp, sizeof(tmp), "%d", sval);
   }
-  else if (DTYPE(MuttVars[idx].type) == DT_LONG)
+  else if (DTYPE(option.type) == DT_LONG)
   {
-    long sval = *((long *) MuttVars[idx].var);
+    long sval = *((long *) option.var);
 
     snprintf(tmp, sizeof(tmp), "%ld", sval);
   }
-  else if (DTYPE(MuttVars[idx].type) == DT_SORT)
+  else if (DTYPE(option.type) == DT_SORT)
   {
     const struct Mapping *map = NULL;
     const char *p = NULL;
 
-    switch (MuttVars[idx].type & DT_SUBTYPE_MASK)
+    switch (option.type & DT_SUBTYPE_MASK)
     {
       case DT_SORT_ALIAS:
         map = SortAliasMethods;
@@ -4513,12 +4506,12 @@ int var_to_string(int idx, char *val, size_t len)
         map = SortMethods;
         break;
     }
-    p = mutt_map_get_name(*((short *) MuttVars[idx].var) & SORT_MASK, map);
+    p = mutt_map_get_name(*((short *) option.var) & SORT_MASK, map);
     snprintf(tmp, sizeof(tmp), "%s%s%s",
-             (*((short *) MuttVars[idx].var) & SORT_REVERSE) ? "reverse-" : "",
-             (*((short *) MuttVars[idx].var) & SORT_LAST) ? "last-" : "", p);
+             (*((short *) option.var) & SORT_REVERSE) ? "reverse-" : "",
+             (*((short *) option.var) & SORT_LAST) ? "last-" : "", p);
   }
-  else if (DTYPE(MuttVars[idx].type) == DT_MAGIC)
+  else if (DTYPE(option.type) == DT_MAGIC)
   {
     char *p = NULL;
 
@@ -4541,8 +4534,8 @@ int var_to_string(int idx, char *val, size_t len)
     }
     mutt_str_strfcpy(tmp, p, sizeof(tmp));
   }
-  else if (DTYPE(MuttVars[idx].type) == DT_BOOL)
-    mutt_str_strfcpy(tmp, *(bool *) MuttVars[idx].var ? "yes" : "no", sizeof(tmp));
+  else if (DTYPE(option.type) == DT_BOOL)
+    mutt_str_strfcpy(tmp, *(bool *) option.var ? "yes" : "no", sizeof(tmp));
   else
     return 0;
 
@@ -4979,22 +4972,11 @@ int mutt_var_value_complete(char *buf, size_t buflen, int pos)
       return 0;
 
     var[vlen - 1] = '\0';
-    idx = mutt_option_index(var);
-    if (idx == -1)
-    {
-			struct Option opt;
-      myvarval = myvar_get(var);
-      if (mutt_option_get(var, &opt) != 1)
-      {
-        pretty_var(pt, buflen - (pt - buf), opt);
-        return 1;
-      }
-      return 0; /* no such variable. */
-    }
-    else if (var_to_string(idx, val, sizeof(val)))
-    {
-      snprintf(pt, buflen - (pt - buf), "%s=\"%s\"", var, val);
-      return 1;
+		struct Option opt;
+		if (mutt_option_get(var, &opt))
+		{
+			pretty_var(pt, buflen - (pt - buf), opt);
+			return 1;
     }
   }
   return 0;
