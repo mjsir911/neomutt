@@ -990,14 +990,44 @@ static int parse_unreplace_list(struct Buffer *buf, struct Buffer *s,
  *
  * This function escapes and quotes the string value.
  */
-static void pretty_var(char *buf, size_t buflen, const char *option, const char *val)
+static void pretty_var(char *buf, size_t buflen, struct Option option)
 {
   char *p = NULL;
 
   if (!buflen)
     return;
 
-  mutt_str_strfcpy(buf, option, buflen);
+	char val[LONG_STRING];
+	val[0] = '\0';
+	switch (option.type) {
+		case DT_ADDRESS: 
+			{
+			mutt_addr_write(val, sizeof(val),
+					*((struct Address **) option.var), false);
+			break;
+			}
+		case DT_PATH:
+		{
+			mutt_str_strfcpy(val, NONULL(*((char **) option.var)), sizeof(val));
+			mutt_pretty_mailbox(val, sizeof(val));
+			break;
+		}
+		case DT_MBTABLE:
+		{
+			struct MbTable *mbt = (*((struct MbTable **) option.var));
+			mutt_str_strfcpy(val, mbt ? NONULL(mbt->orig_str) : "", sizeof(val));
+			break;
+		}
+		case DT_REGEX:
+		{
+			struct Regex *ptr = *(struct Regex **) option.var;
+			mutt_str_strfcpy(val, ptr ? ptr->pattern : NULL, sizeof(val));
+		}
+		default:
+			mutt_str_strfcpy(val, option.var, sizeof(val));
+	}
+
+  mutt_str_strfcpy(buf, option.name, buflen);
   buflen--; /* save room for \0 */
   p = buf + mutt_str_strlen(buf);
 
@@ -2118,47 +2148,13 @@ static int parse_set(struct Buffer *buf, struct Buffer *s, unsigned long data,
       }
       else if (query || *s->dptr != '=')
       {
-        char tmp2[LONG_STRING];
-        const char *val = NULL;
-
-        if (myvar)
-        {
-          val = myvar_get(myvar);
-          if (val)
-          {
-            pretty_var(err->data, err->dsize, myvar, val);
-            break;
-          }
-          else
-          {
-            mutt_buffer_printf(err, _("%s: unknown variable"), myvar);
-            return -1;
-          }
-        }
-        else if (DTYPE(MuttVars[idx].type) == DT_ADDRESS)
-        {
-          tmp2[0] = '\0';
-          mutt_addr_write(tmp2, sizeof(tmp2),
-                          *((struct Address **) MuttVars[idx].var), false);
-          val = tmp2;
-        }
-        else if (DTYPE(MuttVars[idx].type) == DT_PATH)
-        {
-          tmp2[0] = '\0';
-          mutt_str_strfcpy(tmp2, NONULL(*((char **) MuttVars[idx].var)), sizeof(tmp2));
-          mutt_pretty_mailbox(tmp2, sizeof(tmp2));
-          val = tmp2;
-        }
-        else if (DTYPE(MuttVars[idx].type) == DT_MBTABLE)
-        {
-          struct MbTable *mbt = (*((struct MbTable **) MuttVars[idx].var));
-          val = mbt ? NONULL(mbt->orig_str) : "";
-        }
-        else
-          val = *((char **) MuttVars[idx].var);
-
+				struct Option opt;
+				if (!mutt_option_get(buf->data, &opt)) {
+					mutt_buffer_printf(err, _("%s: unknown variable"), myvar);
+					return -1;
+				}
         /* user requested the value of this variable */
-        pretty_var(err->data, err->dsize, MuttVars[idx].name, NONULL(val));
+        pretty_var(err->data, err->dsize, opt);
         break;
       }
       else
@@ -2240,10 +2236,13 @@ static int parse_set(struct Buffer *buf, struct Buffer *s, unsigned long data,
     {
       if (query || *s->dptr != '=')
       {
+				struct Option opt;
+				if (!mutt_option_get(buf->data, &opt)) {
+					mutt_buffer_printf(err, _("%s: unknown variable"), myvar);
+					return -1;
+				}
         /* user requested the value of this variable */
-        struct Regex *ptr = *(struct Regex **) MuttVars[idx].var;
-        const char *value = ptr ? ptr->pattern : NULL;
-        pretty_var(err->data, err->dsize, MuttVars[idx].name, NONULL(value));
+        pretty_var(err->data, err->dsize, opt);
         break;
       }
 
@@ -2518,8 +2517,13 @@ static int parse_set(struct Buffer *buf, struct Buffer *s, unsigned long data,
     {
       if (query || (*s->dptr != '='))
       {
-        pretty_var(err->data, err->dsize, MuttVars[idx].name,
-                   NONULL((*(char **) MuttVars[idx].var)));
+				struct Option opt;
+				if (!mutt_option_get(buf->data, &opt)) {
+					mutt_buffer_printf(err, _("%s: unknown variable"), myvar);
+					return -1;
+				}
+        /* user requested the value of this variable */
+        pretty_var(err->data, err->dsize, opt);
         break;
       }
 
@@ -4043,7 +4047,6 @@ int mutt_init(bool skip_sys_rc, struct ListHead *commands)
   return 0;
 }
 
-#ifdef USE_LUA
 /**
  * mutt_option_get - Get the Option for a config string
  * @param[in]  s   Name of the option
@@ -4075,13 +4078,13 @@ bool mutt_option_get(const char *s, struct Option *opt)
       memset(opt, 0, sizeof(*opt));
       opt->name = s;
       opt->type = DT_STRING;
+			opt->var = (void *) mv;
       opt->initial = (intptr_t) mv;
     }
     return true;
   }
   return false;
 }
-#endif
 
 /**
  * mutt_option_index - Find the index (in rc_vars) of a variable name
@@ -4103,7 +4106,6 @@ int mutt_option_index(const char *s)
   return -1;
 }
 
-#ifdef USE_LUA
 /**
  * mutt_option_set - Set an Option
  * @param val Option to set
@@ -4253,7 +4255,6 @@ int mutt_option_set(const struct Option *val, struct Buffer *err)
   }
   return 0;
 }
-#endif
 
 #ifdef USE_LUA
 /**
@@ -4981,10 +4982,11 @@ int mutt_var_value_complete(char *buf, size_t buflen, int pos)
     idx = mutt_option_index(var);
     if (idx == -1)
     {
+			struct Option opt;
       myvarval = myvar_get(var);
-      if (myvarval)
+      if (mutt_option_get(var, &opt) != 1)
       {
-        pretty_var(pt, buflen - (pt - buf), var, myvarval);
+        pretty_var(pt, buflen - (pt - buf), opt);
         return 1;
       }
       return 0; /* no such variable. */
