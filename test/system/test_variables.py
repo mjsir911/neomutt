@@ -74,18 +74,40 @@ def test_set_boolean():
 
         default_set = get_set()
 
-        h.command("toggle {}".format(variable_name))  # Test toggle
-
-        assert default_set != get_set()
-
-        h.command("reset {}".format(variable_name))  # Test reset
-
-        assert default_set == get_set()
-
         h.command("set {}".format(variable_name))
         assert get_set() is True
 
         h.command("unset {}".format(variable_name))
+        assert get_set() is False
+
+        h.command("reset {}".format(variable_name))  # Test reset
+        assert default_set == get_set()
+
+
+def test_set_boolean_toggle():
+    variable_name = "allow_8bit"
+    with NeoMuttRunner() as h:
+
+        def get_val():
+            # Get default state
+            h.command("set ?{}".format(variable_name))
+            h.await_text(variable_name)
+            return h.screenshot()
+
+        def get_set():
+            output = get_val()
+            if '{} is set'.format(variable_name) in output:
+                return True
+            elif '{} is unset'.format(variable_name) in output:
+                return False
+            return None
+
+        h.command("set {}".format(variable_name))
+        h.command("toggle {}".format(variable_name))
+        assert get_set() is False
+
+        h.command("set {}".format(variable_name))
+        h.command("set inv{}".format(variable_name))
         assert get_set() is False
 
 
@@ -118,11 +140,70 @@ def test_set_command():
         set_val(variable_data)
         assert get_set() == variable_data
 
+
+def test_set_unset():
+    variable_name = "editor"
+    variable_data = "nano"
+
+    with NeoMuttRunner() as h:
+
+        def get_val():
+            h.command("set ?{}".format(variable_name))
+            h.await_text(variable_name)
+            return h.screenshot()
+
+        def get_set():
+            output = get_val()
+            set_line = output.split()[-1]
+            return set_line[len(variable_name) + len('="'):-1]
+
+        def set_val(val):
+            h.command("set {}={}".format(variable_name, val))
+
+        default_set = get_set()
+
+        assert default_set != ""
+
         h.command("unset {}".format(variable_name))
         assert get_set() == ""
 
+        set_val(default_set)
+        assert get_set() != ""
+
+        h.command("set no{}".format(variable_name))
+        assert get_set() == ""
+
+
+def test_set_reset():
+    variable_name = "editor"
+    variable_data = "nano"
+
+    with NeoMuttRunner() as h:
+
+        def get_val():
+            h.command("set ?{}".format(variable_name))
+            h.await_text(variable_name)
+            return h.screenshot()
+
+        def get_set():
+            output = get_val()
+            set_line = output.split()[-1]
+            return set_line[len(variable_name) + len('="'):-1]
+
+        def set_val(val):
+            h.command("set {}={}".format(variable_name, val))
+
+        h.command("reset {}".format(variable_name))
+        default_set = get_set()
+
         set_val(variable_data)
-        assert get_set() == variable_data
+        assert default_set not in get_val()
+
+        h.command("set &{}".format(variable_name))
+        assert get_set() == default_set
+
+        set_val(variable_data)
+        assert default_set not in get_val()
 
         h.command("reset {}".format(variable_name))
         assert get_set() == default_set
