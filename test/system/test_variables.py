@@ -8,7 +8,7 @@ class NeoMuttRunner(Runner):
     def __init__(self):
         from sys import argv
         from os import environ as env
-        exe = env["NEOMUTT_BIN"] or "neomutt"
+        exe = env.get("NEOMUTT_BIN", "neomutt")
         super().__init__(exe, "-F", "/dev/null")
         self.await_text("NeoMutt")  # wait for initialization
 
