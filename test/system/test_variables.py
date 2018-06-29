@@ -6,7 +6,10 @@ from hecate.hecate import Runner
 
 class NeoMuttRunner(Runner):
     def __init__(self):
-        super().__init__("neomutt", "-F", "/dev/null")
+        from sys import argv
+        from os import environ as env
+        exe = env["NEOMUTT_BIN"] or "neomutt"
+        super().__init__(exe, "-F", "/dev/null")
         self.await_text("NeoMutt")  # wait for initialization
 
     def command(self, cmd):
