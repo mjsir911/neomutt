@@ -17,7 +17,7 @@ class NeoMuttRunner(Runner):
         self.press("Enter")
 
 
-def test_set_get():
+def test_get():
     variable_name = "editor"
     with NeoMuttRunner() as h:
         h.command("set ?{}".format(variable_name))
@@ -29,7 +29,7 @@ def test_set_get():
         assert with_question_mark == without_question_mark
 
 
-def test_set_my():
+def test_my():
     variable_name = "my_variable"
     variable_data = "yo"
     with NeoMuttRunner() as h:
@@ -54,7 +54,7 @@ def test_set_my():
         assert "unknown variable" in get_val()
 
 
-def test_set_boolean():
+def test_boolean():
     variable_name = "allow_8bit"
     with NeoMuttRunner() as h:
 
@@ -84,7 +84,7 @@ def test_set_boolean():
         assert default_set == get_set()
 
 
-def test_set_boolean_toggle():
+def test_boolean_toggle():
     variable_name = "allow_8bit"
     with NeoMuttRunner() as h:
 
@@ -111,7 +111,7 @@ def test_set_boolean_toggle():
         assert get_set() is False
 
 
-def test_set_command():
+def test_command():
     variable_name = "editor"
     variable_data = "nano"
 
@@ -141,7 +141,7 @@ def test_set_command():
         assert get_set() == variable_data
 
 
-def test_set_unset():
+def test_unset():
     variable_name = "editor"
     variable_data = "nano"
 
@@ -174,7 +174,7 @@ def test_set_unset():
         assert get_set() == ""
 
 
-def test_set_reset():
+def test_reset():
     variable_name = "editor"
     variable_data = "nano"
 
@@ -209,7 +209,7 @@ def test_set_reset():
         assert get_set() == default_set
 
 
-def test_set_expanduser():
+def test_expanduser():
     variable_name = "editor"
     variable_data = "nano"
 
@@ -237,7 +237,7 @@ def test_set_expanduser():
         assert get_set() == homepath
 
 
-def test_set_path_relative():
+def test_path_relative():
     variable_name = "signature"
     variable_data = "sig12345"
 
