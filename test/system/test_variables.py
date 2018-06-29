@@ -127,6 +127,26 @@ def test_set_command():
         h.command("reset {}".format(variable_name))
         assert get_set() == default_set
 
+
+def test_set_expanduser():
+    variable_name = "editor"
+    variable_data = "nano"
+
+    with NeoMuttRunner() as h:
+
+        def get_val():
+            h.command("set ?{}".format(variable_name))
+            h.await_text(variable_name)
+            return h.screenshot()
+
+        def get_set():
+            output = get_val()
+            set_line = output.split()[-1]
+            return set_line[len(variable_name) + len('="'):-1]
+
+        def set_val(val):
+            h.command("set {}={}".format(variable_name, val))
+
         import os.path
         homepath = "~/{}".format(variable_data)
         set_val(homepath)
@@ -136,3 +156,26 @@ def test_set_command():
         assert get_set() == homepath
 
 
+def test_set_path_relative():
+    variable_name = "signature"
+    variable_data = "sig12345"
+
+    with NeoMuttRunner() as h:
+        def get_val():
+            h.command("set ?{}".format(variable_name))
+            h.await_text(variable_name)
+            return h.screenshot()
+
+        def get_set():
+            output = get_val()
+            set_line = output.split()[-1]
+            return set_line[len(variable_name) + len('="'):-1]
+
+        def set_val(val):
+            h.command("set {}={}".format(variable_name, val))
+
+        from os.path import abspath, expanduser
+
+        set_val(variable_data)
+
+        assert expanduser(get_set()) == abspath(variable_data)
