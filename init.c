@@ -2212,7 +2212,10 @@ static int parse_set(struct Buffer *buf, struct Buffer *s, unsigned long data,
           mutt_str_strfcpy(scratch, buf->data, sizeof(scratch));
           mutt_expand_path(scratch, sizeof(scratch));
 
-          if (url_check_scheme(scratch) == U_UNKNOWN) /* probably a local file */
+          if (
+              (url_check_scheme(scratch) == U_UNKNOWN) /* probably a local file */
+              && (scratch[strlen(scratch) - 1] != '|') /* Is this a file or a command meant to be run? */
+             )
           {
             struct ListNode *np = STAILQ_FIRST(&MuttrcStack);
             if (!mutt_file_to_absolute_path(scratch, np ? NONULL(np->data) : "./"))
@@ -4263,7 +4266,10 @@ int mutt_option_set(const struct Option *val, struct Buffer *err)
         mutt_str_strfcpy(scratch, NONULL((const char *) val->var), sizeof(scratch));
         mutt_expand_path(scratch, sizeof(scratch));
 
-        if (url_check_scheme(scratch) == U_UNKNOWN) /* probably a local file */
+        if (
+            (url_check_scheme(scratch) == U_UNKNOWN) /* probably a local file */
+            && (scratch[strlen(scratch) - 1] != '|') /* Is this a file or a command meant to be run? */
+           )
         {
           struct ListNode *np = STAILQ_FIRST(&MuttrcStack);
           if (!mutt_file_to_absolute_path(scratch, np ? NONULL(np->data) : "./"))
