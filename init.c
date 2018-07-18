@@ -2214,6 +2214,7 @@ static int parse_set(struct Buffer *buf, struct Buffer *s, unsigned long data,
 
           if (
               (url_check_scheme(scratch) == U_UNKNOWN) /* probably a local file */
+              && (strlen(scratch) > 0)
               && (scratch[strlen(scratch) - 1] != '|') /* Is this a file or a command meant to be run? */
              )
           {
@@ -4268,6 +4269,7 @@ int mutt_option_set(const struct Option *val, struct Buffer *err)
 
         if (
             (url_check_scheme(scratch) == U_UNKNOWN) /* probably a local file */
+            && (strlen(scratch) > 0)
             && (scratch[strlen(scratch) - 1] != '|') /* Is this a file or a command meant to be run? */
            )
         {
