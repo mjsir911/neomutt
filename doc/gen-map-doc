@@ -1,8 +1,10 @@
 #!/usr/bin/perl -w
 
+use YAML;
 use strict;
+use warnings;
 
-my (%OPS, %MAP, %DOC, $map);
+my (%OPS, %m_indices, @MAP, %DOC, $map);
 
 my $xml = shift @ARGV;
 
@@ -45,50 +47,19 @@ while (<STDIN>) {
     $binding =~ s/NULL//;
     die "unknown key $binding" if $binding =~ /\\[^\\]|<|>/;
     die "unknown OP $op" unless $OPS{$op};
-    $MAP{$map} .= "<row><entry><literal>&lt;$function&gt;</literal></entry><entry>$binding</entry><entry>$OPS{$op}</entry></row>\n";
+
+		if (not defined $m_indices{$map}) {
+			$m_indices{$map} = scalar @MAP;
+			$MAP[$m_indices{$map}]{grouping} = $map;
+		}
+
+		my $index = defined $MAP[$m_indices{$map}]{"funcs"}[0] ? @{ $MAP[$m_indices{$map}]{"funcs"} }: 0;
+		%{ $MAP[$m_indices{$map}]{funcs}[$index] } = ("title" => $function, "default" => $binding, desc => $OPS{$op});
+
   }
   if ($map and /^}/) {
-    undef $map;
+		undef $map;
   }
 }
 
-open XML, $xml or die "$xml: $!";
-while (<XML>) {
-  if (/__print_map\((.*)\)/) {
-    my $map = $1;
-    my $maptitle = $1;
-    $maptitle =~ s/^(.)/\U$1\E/;
-    unless ($MAP{$map}) {
-      warn "map $map undefined";
-      next;
-    }
-    my $title = $map;
-    $title =~ s/(.)(.+)/\U$1\E$2/;
-    print <<EOT;
-<sect2 id="${map}-map">
-<title>$maptitle Menu</title>
-$DOC{$map}
-
-<table id="tab-${map}-bindings">
-<title>Default $title Menu Bindings</title>
-<tgroup cols="3">
-<thead>
-<row><entry>Function</entry><entry>Default key</entry><entry>Description</entry></row>
-</thead>
-<tbody>
-$MAP{$map}
-</tbody>
-</tgroup>
-</table>
-
-</sect2>
-
-EOT
-    delete $MAP{$map};
-  } else {
-    print;
-  }
-}
-close XML;
-
-warn "unprinted maps: ". join(" ", keys %MAP) if %MAP;
+print Dump(\@MAP);
