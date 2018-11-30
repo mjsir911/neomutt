@@ -20,7 +20,7 @@ sub read_n_parse_options {
 
 		my $index = defined $MAP[0] ? @MAP : 0;
 		if (defined $opt) {
-			%{ $MAP[$index] } =  (opt => $opt, arg => $arg || "", desc => $text);
+			%{ $MAP[$index] } =  (opt => $opt, arg => $arg, desc => $text);
 		} else {
 			$MAP[$index - 1]{desc} .= " ";
 			$MAP[$index - 1]{desc} .= $text;
