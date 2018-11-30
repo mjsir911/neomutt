@@ -24,6 +24,10 @@ function type_translate() {
 	esac
 }
 
+function escape() {
+	sed -e "s#'#''#g" <<< "$@"
+}
+
 function parse_header() {
 	readarray -d '' things < <(sed -n -E 's#\{\s*"([^,]+)",\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+)\s*\},$#\1\x00\2\x00\5#p' <<< "$@")
 	name="${things[0]}"
@@ -31,7 +35,7 @@ function parse_header() {
 	default="$(echo ${things[2]})"
 	echo "  - title: $name"
 	echo "    datatype: $(type_translate $_type)"
-	echo "    default: '${default}'"
+	echo "    default: '$(escape ${default})'"
 	echo "    body: |+"
 }
 
