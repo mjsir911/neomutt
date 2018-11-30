@@ -62,13 +62,17 @@ doc/index.html: $(SRCDIR)/doc/chunk.xsl \
 		doc/manual.xml
 	xsltproc --nonet -o doc/ $(SRCDIR)/doc/chunk.xsl doc/manual.xml > /dev/null 2>&1
 
-doc/neomuttrc.5:	doc/makedoc$(EXEEXT) \
-		$(SRCDIR)/init.h \
+doc/variables.yml: doc/makedoc.sh init.h
+	bash $< < $(word 2,$^) > $@
+
+doc/neomuttrc.5: doc/variables.yml \
+		doc/variables_template.markdown \
 		$(SRCDIR)/doc/neomuttrc.man.head \
 		$(SRCDIR)/doc/neomuttrc.man.tail
 	( sed -e "/^\.TH/s|@MAN_DATE@|$(PACKAGE_DATE)|" \
 	    $(SRCDIR)/doc/neomuttrc.man.head && \
-	    $(MAKEDOC_CPP) $(SRCDIR)/init.h | doc/makedoc$(EXEEXT) -m && \
+	    pandoc $< --template=$(word 2,$^) -t markdown | \
+	    pandoc -f markdown   -t man && \
 	    sed -e "s|@MAN_DOCDIR@|$(docdir)|g" \
 	      $(SRCDIR)/doc/neomuttrc.man.tail \
 	) > $@
