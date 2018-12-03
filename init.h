@@ -95,44 +95,40 @@ struct Option MuttVars[] = {
 
   { "abort_noattach", DT_QUAD, R_NONE, &AbortNoattach, MUTT_NO },
   /*
-  ** .pp
-  ** If set to \fIyes\fP, when composing messages containing the regular
-  ** expression specified by $$abort_noattach_regex and no attachments are
-  ** given, composition will be aborted. If set to \fIno\fP, composing messages
+  ** If set to *yes*, when composing messages containing the regular
+  ** expression specified by [$abort_noattach_regex] and no attachments are
+  ** given, composition will be aborted. If set to *no*, composing messages
   ** as such will never be aborted.
-  ** .pp
+  **
   ** Example:
-  ** .ts
+  ** ```
   ** set abort_noattach_regex = "\\<attach(|ed|ments?)\\>"
-  ** .te
+  ** ```
   */
   { "abort_noattach_regex",  DT_REGEX,  R_NONE, &AbortNoattachRegex, IP "\\<(attach|attached|attachments?)\\>" },
   /*
-  ** .pp
   ** Specifies a regular expression to match against the body of the message, to
   ** determine if an attachment was mentioned but mistakenly forgotten.  If it
-  ** matches, $$abort_noattach will be consulted to determine if message sending
+  ** matches, [$abort_noattach] will be consulted to determine if message sending
   ** will be aborted.
-  ** .pp
+	**
   ** Like other regular expressions in NeoMutt, the search is case sensitive
   ** if the pattern contains at least one upper case letter, and case
   ** insensitive otherwise.
   */
   { "abort_nosubject",  DT_QUAD, R_NONE, &AbortNosubject, MUTT_ASKYES },
   /*
-  ** .pp
-  ** If set to \fIyes\fP, when composing messages and no subject is given
+  ** If set to *yes*, when composing messages and no subject is given
   ** at the subject prompt, composition will be aborted.  If set to
-  ** \fIno\fP, composing messages with no subject given at the subject
+  ** **no**, composing messages with no subject given at the subject
   ** prompt will never be aborted.
   */
   { "abort_unmodified", DT_QUAD, R_NONE, &AbortUnmodified, MUTT_YES },
   /*
-  ** .pp
-  ** If set to \fIyes\fP, composition will automatically abort after
+  ** If set to *yes*, composition will automatically abort after
   ** editing the message body if no changes are made to the file (this
-  ** check only happens after the \fIfirst\fP edit of the file).  When set
-  ** to \fIno\fP, composition will never be aborted.
+  ** check only happens after the *first* edit of the file).  When set
+  ** to *no*, composition will never be aborted.
   */
   { "alias_file",       DT_PATH, R_NONE, &AliasFile, IP "~/.neomuttrc" },
   /*
@@ -355,10 +351,9 @@ struct Option MuttVars[] = {
   */
   { "beep_new",         DT_BOOL, R_NONE, &BeepNew, false },
   /*
-  ** .pp
-  ** When this variable is \fIset\fP, NeoMutt will beep whenever it prints a message
+  ** When this variable is *set*, NeoMutt will beep whenever it prints a message
   ** notifying you of new mail.  This is independent of the setting of the
-  ** $$beep variable.
+  ** [$beep] variable.
   */
   { "bounce",   DT_QUAD, R_NONE, &Bounce, MUTT_ASKYES },
   /*
@@ -4608,16 +4603,42 @@ static int parse_group_context   (struct GroupContext **ctx,
 
 const struct Command Commands[] = {
 #ifdef USE_SOCKET
-  { "account-hook",        mutt_parse_hook,        MUTT_ACCOUNTHOOK },
+  { "account-hook",        mutt_parse_hook,        MUTT_ACCOUNTHOOK }, /* regex command */
+	/*
+	** This hook is executed whenever you access a remote mailbox. Useful to
+	** adjust configuration settings to different IMAP or POP servers
+	*/
 #endif
-  { "alias",               parse_alias,            0 },
-  { "alternates",          parse_alternates,       0 },
-  { "alternative_order",   parse_stailq,           UL &AlternativeOrderList },
+  { "alias",               parse_alias,            0 }, /* [ -group name ... ] key address [, address ...] */
+  { "unalias",             parse_unalias,          0 }, /* [ -group name ... ] { * | key ... } */
+	/*
+	** `alias` defines a surroage `key` for the given address(es). Each *address*
+	** will be resolved into either an email address (`user@example.com`) or a named
+	** email address (User Name `<user@example.com>`). The address may be specified
+	** in either format, or in the format ''`user@example.com` (User Name)''.
+	**
+	** *Note*" If you want to create an alias for more than one address, you
+	** *must* seperate the addresses with a comma (''`,`'').
+	**
+	** `unalias` removes the alias corresponding to the given *key* or all aliases when ''`*`'' is used as an argument.
+	**
+	** The optional -group flag causes the address(es) to be added to or removed from the *name*d group.
+	*/
+  { "alternates",          parse_alternates,       0 }, /* [ -group name ... ] regex [ regex ... ] */
+  { "unalternates",        parse_unalternates,     0 }, /* [ -group name ... ] { * | regex ... } */
+	/*
+	**
+	*/
+  { "alternative_order",   parse_stailq,           UL &AlternativeOrderList }, /* mime-type[/mime-subtype] [ mime-type[/mime-subtype] ... ] */
+  { "unalternative_order", parse_unstailq,         UL &AlternativeOrderList }, /* { * | mime-type[/mime-subtype] ... } */
+	/*
+	**
+	*/
 #ifdef USE_COMPRESSED
-  { "append-hook",         mutt_parse_hook,        MUTT_APPENDHOOK },
+  { "append-hook",         mutt_parse_hook,        MUTT_APPENDHOOK }, /* regex "shell-command" */
 #endif
   { "attachments",         parse_attachments,      0 },
-  { "auto_view",           parse_stailq,           UL &AutoViewList },
+  { "auto_view",           parse_stailq,           UL &AutoViewList }, /*  { + | - } disposition mime-type  */
   { "bind",                mutt_parse_bind,        0 },
   { "charset-hook",        mutt_parse_hook,        MUTT_CHARSETHOOK },
 #ifdef USE_COMPRESSED
@@ -4682,11 +4703,8 @@ const struct Command Commands[] = {
   { "tag-transforms",      parse_tag_transforms,   0 },
   { "timeout-hook",        mutt_parse_hook,        MUTT_TIMEOUTHOOK | MUTT_GLOBALHOOK },
   { "toggle",              parse_set,              MUTT_SET_INV },
-  { "unalias",             parse_unalias,          0 },
-  { "unalternates",        parse_unalternates,     0 },
-  { "unalternative_order", parse_unstailq,         UL &AlternativeOrderList },
   { "unattachments",       parse_unattachments,    0 },
-  { "unauto_view",         parse_unstailq,         UL &AutoViewList },
+  { "unauto_view",         parse_unstailq,         UL &AutoViewList }, /* { * | [ mime-type [ /mime-subtype ] ...]} */
 #ifdef HAVE_COLOR
   { "uncolor",             mutt_parse_uncolor,     0 },
 #endif
